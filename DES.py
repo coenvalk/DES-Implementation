@@ -6,6 +6,7 @@ DES implementation.
 
 import socket
 import sys
+import os
 import numpy as np
 
 from multiprocessing import Process
@@ -14,6 +15,7 @@ passes = 2
 
 port = 8000
 key10 = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+batch = 1024
 
 # permute all bits as np arrays with the ordering given
 # outputs: new bits np array that are humble-dy jumbled
@@ -191,19 +193,20 @@ if __name__ == "__main__":
 
         # send filename:
         s.sendall(full_encrypt(filename))
-        ret = s.recv(1024)
-        if not ret == "200 OK":
-            raise RuntimeError("Did not receive 200 OK.")
 
+        tmp = 0
+        size = os.stat(filename).st_size
         with open(filename, 'rb') as f:
-            data = f.read(1024)
+            data = f.read(batch)
             while not data == "":
-                print data
-                s.sendall(full_encrypt(data))
-                ret = s.recv(1024)
+                tmp += 1
+                print str(tmp * batch) + " / " + str(size)
+                enc_data = full_encrypt(data)
+                ret = s.recv(batch)
                 if not ret == "200 OK":
                     raise RuntimeError("Did not receive 200 OK.")
-                data = f.read(1024)
+                s.sendall(enc_data)
+                data = f.read(batch)
                 
         s.close()
     else:
@@ -216,19 +219,18 @@ if __name__ == "__main__":
 
         conn, addr = s.accept()
 
-        enc_filename = conn.recv(1024)
-        dec_filename = full_decrypt(enc_filename)
+        enc_filename = conn.recv(batch)
+        dec_filename = "DECRYPTED - " + full_decrypt(enc_filename)
         conn.sendall("200 OK")
         print dec_filename
-        with open('output', 'wb') as f:
+        with open(dec_filename, 'wb') as f:
             while True:
-                data = conn.recv(1024)
+                data = conn.recv(batch)
                 dec_data = full_decrypt(data)
-                print dec_data
                 conn.sendall("200 OK")
                 f.write(dec_data)
 
-                if len(data) < 1024:
+                if len(data) < batch:
                     break
         s.close()
         print "Done."
