@@ -14,6 +14,8 @@ To send a file to a certain IP address over a port:
 python DES.py send filename IP port
 ```
 
+NOTE: the listening port must already be initialized, listening, and ready for a file to be received before send can start properly. If this is not the case, the program will terminate and with an error that the connection was refused.
+
 To listen and wait for files from a port:
 
 ```bash
